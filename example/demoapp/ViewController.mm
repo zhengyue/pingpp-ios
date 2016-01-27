@@ -18,17 +18,17 @@
 #define KXOffSet          (self.view.frame.size.width - KBtn_width) / 2
 #define KYOffSet          20
 
-#define kWaiting          @"正在获取支付凭据,请稍后..."
-#define kNote             @"提示"
-#define kConfirm          @"确定"
-#define kErrorNet         @"网络错误"
-#define kResult           @"支付结果：%@"
+#define kWaiting          @"creating payment order..."
+#define kNote             @"Payment result"
+#define kConfirm          @"Confirm"
+#define kErrorNet         @"Network error"
+#define kResult           @"Payment result: %@"
 
-#define kPlaceHolder      @"支付金额"
+#define kPlaceHolder      @"Amount to pay"
 #define kMaxAmount        9999999
 
-#define kUrlScheme      @"demoapp001" // 这个是你定义的 URL Scheme，支付宝、微信支付和测试模式需要。
-#define kUrl            @"http://218.244.151.190/demo/charge" // 你的服务端创建并返回 charge 的 URL 地址，此地址仅供测试用。
+#define kUrlScheme      @"demoapp001" // Your app's custom URL scheme, needed by Alipay, WeChat Pay
+#define kUrl            @"http://218.244.151.190/demo/charge" // This is the demo backend address provided by Ping++
 
 @interface ViewController ()
 
@@ -80,7 +80,7 @@
     [scrollView addSubview:doneButton];
     
     UIButton* wxButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [wxButton setTitle:@"微信" forState:UIControlStateNormal];
+    [wxButton setTitle:@"WeChat" forState:UIControlStateNormal];
     [wxButton addTarget:self action:@selector(normalPayAction:) forControlEvents:UIControlEventTouchUpInside];
     [wxButton setFrame:CGRectMake(imgx, KYOffSet+imgViewHeight+90, imgViewWith, KBtn_height)];
     [wxButton.layer setMasksToBounds:YES];
@@ -92,7 +92,7 @@
     [scrollView addSubview:wxButton];
     
     UIButton* alipayButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [alipayButton setTitle:@"支付宝" forState:UIControlStateNormal];
+    [alipayButton setTitle:@"AliPay" forState:UIControlStateNormal];
     [alipayButton addTarget:self action:@selector(normalPayAction:) forControlEvents:UIControlEventTouchUpInside];
     [alipayButton setFrame:CGRectMake(imgx, KYOffSet+imgViewHeight+140, imgViewWith, KBtn_height)];
     [alipayButton.layer setMasksToBounds:YES];
@@ -104,7 +104,7 @@
     [scrollView addSubview:alipayButton];
     
     UIButton* upmpButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [upmpButton setTitle:@"银联" forState:UIControlStateNormal];
+    [upmpButton setTitle:@"UnionPay" forState:UIControlStateNormal];
     [upmpButton addTarget:self action:@selector(normalPayAction:) forControlEvents:UIControlEventTouchUpInside];
     [upmpButton setFrame:CGRectMake(imgx, KYOffSet+imgViewHeight+190, imgViewWith, KBtn_height)];
     [upmpButton.layer setMasksToBounds:YES];
@@ -114,18 +114,6 @@
     upmpButton.titleLabel.font = [UIFont systemFontOfSize: 18.0];
     [upmpButton setTag:3];
     [scrollView addSubview:upmpButton];
-    
-    UIButton* bfbButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [bfbButton setTitle:@"百度钱包" forState:UIControlStateNormal];
-    [bfbButton addTarget:self action:@selector(normalPayAction:) forControlEvents:UIControlEventTouchUpInside];
-    [bfbButton setFrame:CGRectMake(imgx, KYOffSet+imgViewHeight+240, imgViewWith, KBtn_height)];
-    [bfbButton.layer setMasksToBounds:YES];
-    [bfbButton.layer setCornerRadius:8.0];
-    [bfbButton.layer setBorderWidth:1.0];
-    [bfbButton.layer setBorderColor:[UIColor grayColor].CGColor];
-    bfbButton.titleLabel.font = [UIFont systemFontOfSize: 18.0];
-    [bfbButton setTag:4];
-    [scrollView addSubview:bfbButton];
     
     [scrollView setContentSize:CGSizeMake(viewRect.size.width, KYOffSet+imgViewHeight+260+KBtn_height)];
 }
@@ -163,6 +151,17 @@
 
 - (void)normalPayAction:(id)sender
 {
+    /*-------------------------------------------------------------------------------------
+     
+     Payment provider identifiers:
+     
+     "wx" - WeChat Pay
+     "alipay" - AliPay
+     "upacp" - UnionPay
+     
+     "bfb" - Baidu Wallet (we don't use this)
+     
+     -------------------------------------------------------------------------------------*/
     NSInteger tag = ((UIButton*)sender).tag;
     if (tag == 1) {
         self.channel = @"wx";
@@ -193,6 +192,30 @@
     NSData* data = [NSJSONSerialization dataWithJSONObject:dict options:NSJSONWritingPrettyPrinted error:nil];
     NSString *bodyData = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     
+    /*-------------------------------------------------------------------------------------------------------------
+     
+     Step 1:
+     
+     call the demo backend to create a payment order. This demo backend accept a simple JSON request:
+     
+        {
+            "channel": "wx",        // payment provider identifier
+            "amount" : "1"          // amount to pay, should be an integer, in cents
+        }
+
+     for example:
+     
+       $ curl -H "Content-Type: application/json; charset=utf-8" -d '{"channel":"wx","amount":"1"}' http://218.244.151.190/demo/charge
+     
+     the response is a JSON object returned from Ping++ server, which will be needed in the next step.
+     
+     Note: in a real app, the backend is developed by us, so the format of the request message
+     is also decided by us. The calling process is like:
+     
+        our app (with Ping++ client sdk) --> our backend (with Ping++ server sdk) --> Ping++ server --> payment providers
+     
+     --------------------------------------------------------------------------------------------------------------*/
+    
     [postRequest setHTTPBody:[NSData dataWithBytes:[bodyData UTF8String] length:strlen([bodyData UTF8String])]];
     [postRequest setHTTPMethod:@"POST"];
     [postRequest setValue:@"application/json; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
@@ -216,11 +239,53 @@
             }
             NSString* charge = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
             NSLog(@"charge = %@", charge);
+            
+            /*-------------------------------------------------------------------------------------
+             
+               Step 2:
+             
+               call ping++ SDK to open the selected payment provider, could be another app or
+               a native UI control, or a webview, depending on which payment provider is selected,
+               and what app has been already installed on the phone.
+             
+               parameters:
+                 charge: the JSON object returned from the ping++ server
+                 appURLScheme: app's url scheme, for switching back from payment app.
+                     For example, when using WeChat Pay, this method will open WeChat app to do the payment. 
+                     And after payment is finished, WeChat has a "Return to Merchant" button which will call
+                     openURL with this scheme, to switch back to our app.
+             
+               Note: since this is a demo app, calling this method will NOT open the real payment app,
+               but will open the browser to display a test page to simulate the real app. The page contains
+               3 buttons to simulate 3 different payment results, which are, from top to bottom,
+               "Payment Succeed", "Payment Canceled", "Payment Failed"
+             
+             -------------------------------------------------------------------------------------*/
+            
             [Pingpp createPayment:charge viewController:weakSelf appURLScheme:kUrlScheme withCompletion:^(NSString *result, PingppError *error) {
+                
+                /*-------------------------------------------------------------------------------------
+                 
+                   Step 3:
+                 
+                   handle payment result.
+                 
+                   Note: if user selected UnionPay or if user selected AliPay but does NOT
+                   have the AliPay app installed, the result will be passed to this block directly.
+                 
+                   But, if user selected WeChat Pay or AliPay and does have these app installed, then,
+                   the payment result will be passed to [UIApplicationDelegate application:openURL:****:],
+                   so we need to call [Pingpp handleOpenURL:] there in order to receive the proper result here.
+                   See AppDelegate.m for more details.
+                 
+                 -------------------------------------------------------------------------------------*/
+                
                 NSLog(@"completion block: %@", result);
-                if (error == nil) {
-                    NSLog(@"PingppError is nil");
+                if ([result isEqualToString:@"success"]) {
+                    // payment is succeeded
+                    NSLog(@"Payment succeeded");
                 } else {
+                    // payment is failed or cancelled
                     NSLog(@"PingppError: code=%lu msg=%@", (unsigned  long)error.code, [error getMsg]);
                 }
                 [weakSelf showAlertMessage:result];
