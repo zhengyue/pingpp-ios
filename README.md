@@ -2,10 +2,10 @@
 
 ## Overview
 
-This demo is based on the original [Pingpp iOS SDK](https://github.com/PingPlusPlus/pingpp-ios), with English UI and some comments.
+This demo is based on the original [Pingpp iOS SDK](https://github.com/PingPlusPlus/pingpp-ios). The UI is changed to English and some comments were added.
 
-lib - Ping++ iOS SDK file
-example - a simple demo application
+- `lib` - Ping++ iOS SDK file
+- `example` - a simple demo application
 
 ## iOS version requirement
 
