@@ -185,27 +185,29 @@
     NSURL* url = [NSURL URLWithString:kUrl];
     NSMutableURLRequest * postRequest=[NSMutableURLRequest requestWithURL:url];
 
+    /*
     NSDictionary* dict = @{
         @"channel" : self.channel,
         @"amount"  : amountStr
     };
     NSData* data = [NSJSONSerialization dataWithJSONObject:dict options:NSJSONWritingPrettyPrinted error:nil];
     NSString *bodyData = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    */
+    
+    NSString *bodyData = [NSString stringWithFormat:@"channel=%@&amount=%@", self.channel, amountStr];
     
     /*-------------------------------------------------------------------------------------------------------------
      
      Step 1:
      
-     call the demo backend to create a payment order. This demo backend accept a simple JSON request:
+     call the demo backend to create a payment order. This demo backend accept 2 parameters:
      
-        {
-            "channel": "wx",        // payment provider identifier
-            "amount" : "1"          // amount to pay, should be an integer, in cents
-        }
+      - channel        // payment provider identifier
+      - amount         // amount to pay, should be an integer, in cents
 
      for example:
      
-       $ curl -H "Content-Type: application/json; charset=utf-8" -d '{"channel":"wx","amount":"1"}' http://218.244.151.190/demo/charge
+       $ curl -d "channel=wx&amount=100" http://localhost:8080/charge
      
      the response is a JSON object returned from Ping++ server, which will be needed in the next step.
      
@@ -218,7 +220,6 @@
     
     [postRequest setHTTPBody:[NSData dataWithBytes:[bodyData UTF8String] length:strlen([bodyData UTF8String])]];
     [postRequest setHTTPMethod:@"POST"];
-    [postRequest setValue:@"application/json; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
     
     ViewController * __weak weakSelf = self;
     NSOperationQueue *queue = [[NSOperationQueue alloc] init];
