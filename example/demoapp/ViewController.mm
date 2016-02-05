@@ -28,7 +28,7 @@
 #define kMaxAmount        9999999
 
 #define kUrlScheme      @"demoapp001" // Your app's custom URL scheme, needed by Alipay, WeChat Pay
-#define kUrl            @"http://218.244.151.190/demo/charge" // This is the demo backend address provided by Ping++
+#define kUrl            @"http://localhost:8080/charge" // This is the demo backend https://github.com/zhengyue/pingpp-java
 
 @interface ViewController ()
 
